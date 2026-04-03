@@ -10,6 +10,7 @@ import { Footer } from './components/layout/Footer';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ChatBot } from './components/ui/ChatBot';
+import { CookieConsent } from './components/CookieConsent';
 
 // Lazy-loaded page components
 const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
@@ -111,6 +112,7 @@ export default function App() {
           } />
         </Routes>
       </Suspense>
+      <CookieConsent />
     </Router>
   );
 }
