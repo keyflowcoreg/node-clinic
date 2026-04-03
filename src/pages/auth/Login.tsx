@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowRight, User, Building2, Shield } from 'lucide-react';
+import { ArrowRight, User, Building2, Shield, Stethoscope, Play } from 'lucide-react';
 import { useAuth, ROLE_REDIRECTS } from '../../context/AuthContext';
 import { IMAGES } from '../../lib/images';
 
 const DEMO_ACCOUNTS = [
   { label: 'Paziente Demo', email: 'demo@nodeclinic.com', password: 'demo2026', icon: User },
   { label: 'Clinica Demo', email: 'clinica@nodeclinic.com', password: 'clinica2026', icon: Building2 },
+  { label: 'Dottore Demo', email: 'dottore@nodeclinic.com', password: 'dottore2026', icon: Stethoscope },
   { label: 'Admin Demo', email: 'admin@nodeclinic.com', password: 'admin2026', icon: Shield },
 ] as const;
 
@@ -18,12 +19,14 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const redirectTo = searchParams.get('redirect');
 
   const performLogin = async (loginEmail: string, loginPassword: string) => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const user = await auth.login(loginEmail, loginPassword);
@@ -55,6 +58,7 @@ export function Login() {
           src={IMAGES.auth.login}
           alt="Node Clinic Architecture"
           className="absolute inset-0 w-full h-full object-cover opacity-90 saturate-75"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-graphite/10" />
         <div className="absolute inset-0 p-12 flex flex-col justify-between">
@@ -105,6 +109,16 @@ export function Login() {
             </motion.div>
           )}
 
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 sharp-edge"
+            >
+              <p className="text-sm text-green-700">{success}</p>
+            </motion.div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-xs font-medium uppercase tracking-widest text-silver mb-2">Email</label>
@@ -113,6 +127,7 @@ export function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="nome@email.com"
                 className="w-full bg-white border border-silver/30 p-4 sharp-edge focus:border-graphite focus:ring-0 outline-none transition-colors"
               />
             </div>
@@ -154,7 +169,7 @@ export function Login() {
           <div className="mt-10">
             <div className="flex items-center gap-4 mb-6">
               <div className="flex-1 h-px bg-silver/30" />
-              <span className="text-xs uppercase tracking-widest text-silver font-medium">oppure accedi come</span>
+              <span className="text-xs uppercase tracking-widest text-silver font-medium">modalità demo</span>
               <div className="flex-1 h-px bg-silver/30" />
             </div>
 
@@ -177,8 +192,9 @@ export function Login() {
               })}
             </div>
 
-            <p className="text-xs text-silver text-center mt-4">
-              Credenziali demo per esplorare la piattaforma
+            <p className="text-xs text-silver text-center mt-4 flex items-center justify-center gap-1">
+              <Play className="w-3 h-3" />
+              Dati demo locali — nessun account necessario
             </p>
           </div>
 

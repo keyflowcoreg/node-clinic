@@ -1,54 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Search as SearchIcon, MapPin, Star, Filter, Calendar, CheckCircle2, GitCompareArrows } from 'lucide-react';
 import { ClinicMap } from '../components/ui/ClinicMap';
 import { TreatmentComparison } from '../components/ui/TreatmentComparison';
 import { store } from '../services/store';
+import { api } from '../services/api';
 import { IMAGES } from '../lib/images';
-import type { Treatment } from '../types/database';
-
-const MOCK_RESULTS = [
-  {
-    id: 'c1',
-    name: 'Aesthetic Milano',
-    location: 'Milano, Brera',
-    city: 'Milano',
-    distance: '1.2 km',
-    rating: 4.9,
-    reviews: 128,
-    image: IMAGES.clinicsThumbs[0],
-    nextAvailable: 'Oggi, 14:30',
-    priceFrom: 179,
-    treatments: ['Botox', 'Filler', 'Epilazione Laser']
-  },
-  {
-    id: 'c2',
-    name: 'Roma Medical Center',
-    location: 'Roma, Parioli',
-    city: 'Roma',
-    distance: '3.4 km',
-    rating: 4.8,
-    reviews: 94,
-    image: IMAGES.clinicsThumbs[1],
-    nextAvailable: 'Domani, 09:00',
-    priceFrom: 200,
-    treatments: ['Rinoplastica', 'Liposuzione', 'Botox']
-  },
-  {
-    id: 'c3',
-    name: 'Torino Health & Beauty',
-    location: 'Torino, Centro',
-    city: 'Torino',
-    distance: '5.1 km',
-    rating: 5.0,
-    reviews: 45,
-    image: IMAGES.clinicsThumbs[2],
-    nextAvailable: 'Mer, 11:15',
-    priceFrom: 150,
-    treatments: ['Trattamento Viso', 'Peeling', 'Microneedling']
-  }
-];
+import type { Treatment, Clinic } from '../types/database';
 
 type SortOption = 'recommended' | 'rating' | 'price' | 'name';
 
@@ -66,43 +25,48 @@ export function Search() {
   const [showFilters, setShowFilters] = useState(false);
   const [compareList, setCompareList] = useState<Treatment[]>([]);
 
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchClinics() {
+      setLoading(true);
+      try {
+        const data = await api.clinics.search(initialQuery, initialLoc || undefined);
+        setClinics(data);
+      } catch {
+        // Fallback to store
+        setClinics(store.clinics.getAll());
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchClinics();
+  }, [initialQuery, initialLoc]);
+
   // Get all treatments from store for filter dropdown
   const allTreatments = useMemo(() => store.treatments.getAll(), []);
-
-  // All unique treatment names across clinics
-  const allTreatmentNames = useMemo(() => {
-    const names = new Set<string>();
-    MOCK_RESULTS.forEach((c) => c.treatments.forEach((t) => names.add(t)));
-    return Array.from(names).sort();
-  }, []);
 
   // All unique cities
   const allCities = useMemo(() => {
     const cities = new Set<string>();
-    MOCK_RESULTS.forEach((c) => cities.add(c.city));
+    clinics.forEach((c) => cities.add(c.city));
     return Array.from(cities).sort();
-  }, []);
+  }, [clinics]);
 
   const filteredResults = useMemo(() => {
-    let results = MOCK_RESULTS.filter((clinic) => {
+    let results = clinics.filter((clinic) => {
       const matchesQuery =
         query === '' ||
-        clinic.name.toLowerCase().includes(query.toLowerCase()) ||
-        clinic.treatments.some((t) =>
-          t.toLowerCase().includes(query.toLowerCase())
-        );
+        clinic.name.toLowerCase().includes(query.toLowerCase());
       const matchesLoc =
         location === '' ||
-        clinic.location.toLowerCase().includes(location.toLowerCase());
-      const matchesTreatment =
-        treatmentFilter === '' ||
-        clinic.treatments.some((t) =>
-          t.toLowerCase().includes(treatmentFilter.toLowerCase())
-        );
+        clinic.city.toLowerCase().includes(location.toLowerCase()) ||
+        clinic.address.toLowerCase().includes(location.toLowerCase());
       const matchesCity =
         cityFilter === '' ||
         clinic.city.toLowerCase() === cityFilter.toLowerCase();
-      return matchesQuery && matchesLoc && matchesTreatment && matchesCity;
+      return matchesQuery && matchesLoc && matchesCity;
     });
 
     // Sort
@@ -111,7 +75,7 @@ export function Search() {
         results = [...results].sort((a, b) => b.rating - a.rating);
         break;
       case 'price':
-        results = [...results].sort((a, b) => a.priceFrom - b.priceFrom);
+        results = [...results].sort((a, b) => (a.id > b.id ? 1 : -1));
         break;
       case 'name':
         results = [...results].sort((a, b) => a.name.localeCompare(b.name));
@@ -121,7 +85,7 @@ export function Search() {
     }
 
     return results;
-  }, [query, location, sortBy, treatmentFilter, cityFilter]);
+  }, [query, location, sortBy, cityFilter, clinics]);
 
   function toggleCompare(treatmentName: string) {
     const existing = compareList.find(
@@ -199,9 +163,9 @@ export function Search() {
                   className="bg-ivory-dark border border-silver/30 p-2 sharp-edge focus:border-graphite focus:ring-0 outline-none text-sm text-graphite min-w-[180px]"
                 >
                   <option value="">Tutti</option>
-                  {allTreatmentNames.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {allTreatments.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
                     </option>
                   ))}
                 </select>
@@ -273,14 +237,14 @@ export function Search() {
             >
               <div className="image-zoom w-full sm:w-64 h-48 sm:h-auto relative bg-silver-light shrink-0 overflow-hidden">
                 <img
-                  src={clinic.image}
+                  src={clinic.image_url || IMAGES.clinicsThumbs[0]}
                   alt={clinic.name}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 flex items-center gap-1 sharp-edge">
                   <Star className="w-3 h-3 fill-warm text-warm" />
                   <span className="text-xs font-medium">{clinic.rating}</span>
-                  <span className="text-xs text-silver">({clinic.reviews})</span>
+                  <span className="text-xs text-silver">({clinic.reviews_count})</span>
                 </div>
               </div>
 
@@ -296,50 +260,15 @@ export function Search() {
                 </div>
 
                 <p className="text-sm text-graphite-light/70 mb-4 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" /> {clinic.location} <span className="text-silver mx-1">&bull;</span> {clinic.distance}
+                  <MapPin className="w-3.5 h-3.5" /> {clinic.city}, {clinic.address}
                 </p>
-
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {clinic.treatments.slice(0, 3).map(t => (
-                    <span key={t} className="text-xs uppercase tracking-wider bg-ivory-dark px-2 py-1 text-graphite-light/80">
-                      {t}
-                    </span>
-                  ))}
-                  {clinic.treatments.length > 3 && (
-                    <span className="text-xs uppercase tracking-wider bg-ivory-dark px-2 py-1 text-graphite-light/80">
-                      +{clinic.treatments.length - 3}
-                    </span>
-                  )}
-                </div>
-
-                {/* Compare buttons for each treatment */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {clinic.treatments.map((t) => (
-                    <button
-                      key={t}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleCompare(t);
-                      }}
-                      className={`flex items-center gap-1 text-[10px] font-medium uppercase tracking-widest px-2 py-1 sharp-edge border transition-colors ${
-                        isInCompare(t)
-                          ? 'bg-warm text-ivory border-warm'
-                          : 'bg-transparent text-silver border-silver/30 hover:border-graphite hover:text-graphite'
-                      }`}
-                    >
-                      <GitCompareArrows className="w-3 h-3" />
-                      {t}
-                    </button>
-                  ))}
-                </div>
 
                 <div className="mt-auto pt-4 border-t border-silver/20 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-graphite">
                       <Calendar className="w-4 h-4 text-silver" />
-                      Prima disponibilit&agrave;: {clinic.nextAvailable}
+                      Prossimamente
                     </div>
-                    <span className="text-sm font-medium text-graphite">da {'\u20AC'}{clinic.priceFrom}</span>
                   </div>
                   <span className="text-xs font-medium uppercase tracking-widest text-silver group-hover:text-graphite transition-colors">
                     Vedi disponibilit&agrave; &rarr;
@@ -357,10 +286,10 @@ export function Search() {
               clinics={filteredResults.map(c => ({
                 id: c.id,
                 name: c.name,
-                lat: c.id === 'c1' ? 45.4685 : c.id === 'c2' ? 41.9028 : 45.0703,
-                lng: c.id === 'c1' ? 9.1954 : c.id === 'c2' ? 12.4964 : 7.6869,
+                lat: c.lat ?? 44.0,
+                lng: c.lng ?? 11.0,
                 rating: c.rating,
-                address: c.location
+                address: c.address
               }))}
               center={[44.0, 11.0]}
               zoom={6}

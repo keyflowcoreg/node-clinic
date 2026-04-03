@@ -75,6 +75,7 @@ export function Journal() {
                 src={ARTICLES[0].image}
                 alt={ARTICLES[0].title}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
               />
             </div>
             <div className="p-8 lg:p-12">
@@ -111,6 +112,7 @@ export function Journal() {
                   src={article.image}
                   alt={article.title}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
                 />
               </div>
               <div className="p-6 flex flex-col flex-1">

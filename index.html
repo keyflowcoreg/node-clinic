@@ -1,13 +1,84 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1A1A1A" />
-    <meta name="description" content="Architectural medical luxury booking platform." />
+    <meta name="description" content="Node Clinic — Piattaforma premium per prenotare visite mediche ed estetiche nelle migliori cliniche italiane. Prenota online in modo semplice e sicuro." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://nodeclinic.it/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="it_IT" />
+    <meta property="og:site_name" content="Node Clinic" />
+    <meta property="og:title" content="Node Clinic — Prenota Visite Mediche ed Estetiche Online" />
+    <meta property="og:description" content="Piattaforma premium per prenotare visite mediche ed estetiche nelle migliori cliniche italiane. Prenota online in modo semplice e sicuro." />
+    <meta property="og:image" content="https://nodeclinic.it/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://nodeclinic.it/" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Node Clinic — Prenota Visite Mediche ed Estetiche Online" />
+    <meta name="twitter:description" content="Piattaforma premium per prenotare visite mediche ed estetiche nelle migliori cliniche italiane." />
+    <meta name="twitter:image" content="https://nodeclinic.it/og-image.jpg" />
+
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="https://picsum.photos/seed/icon192/192/192" />
-    <title>Node Clinic</title>
+    <title>Node Clinic — Prenota Visite Mediche ed Estetiche Online</title>
+
+    <!-- JSON-LD Structured Data: MedicalBusiness -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MedicalBusiness",
+      "name": "Node Clinic",
+      "description": "Piattaforma premium per prenotare visite mediche ed estetiche nelle migliori cliniche italiane.",
+      "url": "https://nodeclinic.it",
+      "logo": "https://nodeclinic.it/logo.png",
+      "image": "https://nodeclinic.it/og-image.jpg",
+      "telephone": "+39-02-0000000",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Milano",
+        "addressRegion": "Lombardia",
+        "addressCountry": "IT"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "45.4642",
+        "longitude": "9.1900"
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "08:00",
+        "closes": "20:00"
+      },
+      "priceRange": "€€",
+      "sameAs": [
+        "https://www.instagram.com/nodeclinic",
+        "https://www.linkedin.com/company/nodeclinic"
+      ],
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://nodeclinic.it/search",
+          "actionPlatform": [
+            "http://schema.org/DesktopWebPlatform",
+            "http://schema.org/MobileWebPlatform"
+          ]
+        },
+        "result": {
+          "@type": "Reservation",
+          "name": "Prenotazione Visita"
+        }
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -23,4 +94,3 @@
     </script>
   </body>
 </html>
-

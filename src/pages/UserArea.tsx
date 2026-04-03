@@ -10,30 +10,6 @@ import { AnimatedCard } from '../components/ui/AnimatedCard';
 import { store } from '../services/store';
 import type { Booking } from '../types/database';
 
-const MOCK_APPOINTMENTS = [
-  {
-    id: 'a1',
-    clinic: 'Aesthetic Milano',
-    treatment: 'Tossina Botulinica',
-    date: '2026-03-14',
-    time: '14:30',
-    status: 'in arrivo',
-    balance: '\u20AC300',
-    deposit: '\u20AC50 (Pagato)',
-    location: 'Via Brera 12, 20121 Milano'
-  },
-  {
-    id: 'a2',
-    clinic: 'Roma Medical Center',
-    treatment: 'Consulenza Iniziale',
-    date: '2025-11-20',
-    time: '10:00',
-    status: 'completato',
-    balance: '\u20AC0',
-    deposit: '\u20AC0',
-    location: 'Via Parioli 45, 00197 Roma'
-  }
-];
 
 type ToggleProps = {
   checked: boolean;
@@ -78,6 +54,8 @@ export function UserArea() {
 
   // Documents state
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
+  const [appointments, setAppointments] = useState<Booking[]>([]);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   // Settings state
   const [profile, setProfile] = useState<UserProfile>({
@@ -101,6 +79,7 @@ export function UserArea() {
 
     const bookings = store.bookings.getByUserId(user.id);
     setUserBookings(bookings);
+    setAppointments(bookings);
 
     // Load profile from localStorage
     try {
@@ -171,6 +150,23 @@ export function UserArea() {
     setTimeout(() => setPrivacySaved(false), 2000);
   }
 
+  function handleReschedule(booking: Booking) {
+    navigate(`/book/${booking.clinic_id}/${booking.treatment_id}`);
+  }
+
+  function handleCancel(bookingId: string) {
+    setCancellingId(bookingId);
+  }
+
+  function confirmCancel() {
+    if (!cancellingId) return;
+    store.bookings.update(cancellingId, { status: 'cancelled' });
+    setAppointments(prev =>
+      prev.map(a => a.id === cancellingId ? { ...a, status: 'cancelled' } : a)
+    );
+    setCancellingId(null);
+  }
+
   const documentBookings = userBookings.filter(
     (b) => b.status === 'confirmed' || b.status === 'completed'
   );
@@ -239,41 +235,45 @@ export function UserArea() {
               <h1 className="text-3xl font-display font-light text-graphite mb-8">I Tuoi Appuntamenti</h1>
 
               <div className="space-y-6">
-                {MOCK_APPOINTMENTS.map((apt, i) => (
+                {appointments.map((apt, i) => (
                   <AnimatedCard key={apt.id} delay={i * 0.1} className="p-6">
                     <div className="flex flex-col md:flex-row justify-between gap-6">
 
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-4">
                           <span className={`text-xs font-medium uppercase tracking-widest px-2 py-1 ${
-                            apt.status === 'in arrivo' ? 'bg-warm text-ivory' : 'bg-silver-light text-graphite-light'
+                            apt.status === 'confirmed' || apt.status === 'pending' ? 'bg-warm text-ivory' : apt.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-silver-light text-graphite-light'
                           }`}>
                             {apt.status}
                           </span>
                           <span className="text-sm text-silver font-medium">{new Date(apt.date).toLocaleDateString('it-IT')} alle {apt.time}</span>
                         </div>
 
-                        <h3 className="text-2xl font-display font-medium text-graphite mb-1">{apt.treatment}</h3>
-                        <p className="text-graphite-light/70 mb-4">{apt.clinic}</p>
+                        <h3 className="text-2xl font-display font-medium text-graphite mb-1">{apt.treatment_name}</h3>
+                        <p className="text-graphite-light/70 mb-4">{apt.clinic_name}</p>
 
                         <p className="text-sm text-silver flex items-center gap-2">
-                          <MapPin className="w-4 h-4" /> {apt.location}
+                          <MapPin className="w-4 h-4" /> {apt.clinic_name}
                         </p>
                       </div>
 
                       <div className="md:text-right flex flex-col justify-between border-t md:border-t-0 md:border-l border-silver/20 pt-4 md:pt-0 md:pl-6">
                         <div>
                           <div className="text-sm text-silver mb-1">Saldo in Clinica</div>
-                          <div className="text-2xl font-display font-light text-graphite">{apt.balance}</div>
-                          <div className="text-xs text-silver mt-1">Deposito: {apt.deposit}</div>
+                          <div className="text-2xl font-display font-light text-graphite">€{(apt.total_amount ?? 0) - apt.deposit_amount}</div>
+                          <div className="text-xs text-silver mt-1">Deposito: €{apt.deposit_amount} (Pagato)</div>
                         </div>
 
-                        {apt.status === 'in arrivo' && (
+                        {(apt.status === 'pending' || apt.status === 'confirmed') && (
                           <div className="flex gap-3 mt-6">
-                            <button className="text-xs font-medium uppercase tracking-widest text-silver hover:text-graphite transition-colors underline decoration-silver/50 underline-offset-4">
+                            <button
+                              onClick={() => handleReschedule(apt)}
+                              className="text-xs font-medium uppercase tracking-widest text-silver hover:text-graphite transition-colors underline decoration-silver/50 underline-offset-4">
                               Riprogramma
                             </button>
-                            <button className="text-xs font-medium uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors underline decoration-red-500/50 underline-offset-4">
+                            <button
+                              onClick={() => handleCancel(apt.id)}
+                              className="text-xs font-medium uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors underline decoration-red-500/50 underline-offset-4">
                               Cancella
                             </button>
                           </div>

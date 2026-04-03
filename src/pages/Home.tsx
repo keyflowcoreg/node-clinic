@@ -235,6 +235,7 @@ export function Home() {
                     src={clinic.image}
                     alt={clinic.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading="lazy"
                   />
                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 flex items-center gap-1 sharp-edge">
                     <Star className="w-3.5 h-3.5 fill-warm text-warm" />
@@ -335,6 +336,7 @@ export function Home() {
                 src={IMAGES.valueProp}
                 alt="Minimalist interior"
                 className="w-full h-full object-cover opacity-80"
+                loading="lazy"
               />
               <div className="absolute inset-0 border border-ivory/20 m-8 sharp-edge" />
             </div>

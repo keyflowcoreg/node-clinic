@@ -1,7 +1,7 @@
 export type ClinicStatus = 'active' | 'pending' | 'rejected'
 export type TreatmentCategory = 'iniettivi' | 'laser' | 'corpo' | 'viso' | 'chirurgia'
 export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
-export type UserRole = 'user' | 'clinic' | 'admin'
+export type UserRole = 'user' | 'clinic' | 'admin' | 'doctor'
 export type UserStatus = 'active' | 'suspended'
 export type LeadSource = 'prenota-visita' | 'diventa-partner' | 'trattamenti' | 'contact' | 'exit-intent' | 'whatsapp' | 'chatbot' | 'bio'
 export type PaymentStatus = 'paid' | 'pending' | 'refunded'

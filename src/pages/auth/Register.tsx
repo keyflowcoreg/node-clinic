@@ -2,21 +2,44 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
+import { useAuth, ROLE_REDIRECTS } from '../../context/AuthContext';
 import { IMAGES } from '../../lib/images';
 
 export function Register() {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: ''
   });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual registration
-    navigate('/search');
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      const user = await auth.register(formData.email, formData.password, fullName);
+      const target = ROLE_REDIRECTS[user.role];
+      navigate(target);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Errore durante la registrazione.';
+      // Check if it's a "confirm email" success message
+      if (message.includes('Controlla la tua email')) {
+        setSuccess(message);
+      } else {
+        setError(message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -27,6 +50,7 @@ export function Register() {
           src={IMAGES.auth.register}
           alt="Node Clinic Architecture"
           className="absolute inset-0 w-full h-full object-cover opacity-90 saturate-75"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-graphite/10" />
         <div className="absolute inset-0 p-12 flex flex-col justify-between">
@@ -66,6 +90,29 @@ export function Register() {
 
           <h1 className="text-3xl font-display font-light text-graphite mb-2">Crea Account.</h1>
           <p className="text-graphite-light/70 font-light mb-12">Inizia il tuo percorso di eccellenza medica.</p>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-red-50 border border-red-200 sharp-edge"
+            >
+              <p className="text-sm text-red-700">{error}</p>
+            </motion.div>
+          )}
+
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 sharp-edge"
+            >
+              <p className="text-sm text-green-700">{success}</p>
+              <Link to="/auth/login" className="text-sm text-green-800 font-medium underline underline-offset-4 mt-2 inline-block">
+                Vai al login
+              </Link>
+            </motion.div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
@@ -107,14 +154,28 @@ export function Register() {
               <input 
                 type="password" 
                 required
+                minLength={6}
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 className="w-full bg-white border border-silver/30 p-4 sharp-edge focus:border-graphite focus:ring-0 outline-none transition-colors" 
               />
+              <p className="text-xs text-silver mt-1">Minimo 6 caratteri</p>
             </div>
 
-            <button type="submit" className="w-full bg-graphite text-ivory py-4 mt-4 text-sm font-medium uppercase tracking-widest hover:bg-graphite-light transition-colors sharp-edge flex items-center justify-center gap-2">
-              Registrati <ArrowRight className="w-4 h-4" />
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-graphite text-ivory py-4 mt-4 text-sm font-medium uppercase tracking-widest hover:bg-graphite-light transition-colors sharp-edge flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
+                  </svg>
+                  Registrazione in corso...
+                </span>
+              ) : <>Registrati <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
 

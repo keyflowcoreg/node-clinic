@@ -15,6 +15,7 @@ export function ChatClinicCard({ card, onClick }: ChatClinicCardProps) {
             src={card.image}
             alt={card.title}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         </div>
       )}

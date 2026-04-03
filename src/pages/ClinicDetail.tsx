@@ -1,84 +1,72 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { MapPin, Star, Clock, CheckCircle2, ArrowRight, Info, Users } from 'lucide-react';
 import { ImageCarousel } from '../components/ui/ImageCarousel';
 import { ScrollReveal } from '../components/ui/ScrollReveal';
 import { IMAGES } from '../lib/images';
-
-const MOCK_CLINIC = {
-  id: 'c1',
-  name: 'Aesthetic Milano',
-  location: 'Via Brera 12, 20121 Milano',
-  rating: 4.9,
-  reviews: 128,
-  description: 'Aesthetic Milano rappresenta l\'apice del lusso medico architettonico. Situata nel cuore di Brera, la nostra clinica combina tecnologie mediche all\'avanguardia con un ambiente sereno e minimalista progettato per elevare l\'esperienza del paziente. Ogni trattamento è preceduto da un\'accurata valutazione medica.',
-  images: [IMAGES.clinics[0], IMAGES.clinics[1], IMAGES.clinics[2]],
-  treatments: [
-    {
-      id: 't1',
-      category: 'Iniettabili',
-      name: 'Tossina Botulinica (Botox)',
-      duration: '30 min',
-      price: '€350',
-      deposit: '€50',
-      description: 'Trattamento mirato per le rughe d\'espressione. Valutazione medica richiesta prima della somministrazione.'
-    },
-    {
-      id: 't2',
-      category: 'Iniettabili',
-      name: 'Filler Dermici (Acido Ialuronico)',
-      duration: '45 min',
-      price: '€400',
-      deposit: '€50',
-      description: 'Ripristino dei volumi e contouring. Selezione del prodotto in base alle esigenze anatomiche individuali.'
-    },
-    {
-      id: 't3',
-      category: 'Qualità della Pelle',
-      name: 'Bioremodellamento Profhilo',
-      duration: '30 min',
-      price: '€300',
-      deposit: '€50',
-      description: 'Trattamento anti-aging iniettabile a base di acido ialuronico per pelli che perdono elasticità e compattezza.'
-    }
-  ],
-  practitioners: [
-    {
-      id: 'p1',
-      name: 'Dr.ssa Elena Rossi',
-      role: 'Direttore Sanitario, Chirurgo Plastico',
-      image: IMAGES.doctors[0]
-    },
-    {
-      id: 'p2',
-      name: 'Dr. Marco Bianchi',
-      role: 'Medico Estetico',
-      image: IMAGES.doctors[1]
-    }
-  ]
-};
-
-type AvailabilityFilter = 'oggi' | 'domani' | 'settimana';
-
-const MOCK_SLOTS: Record<string, Record<AvailabilityFilter, string[]>> = {
-  t1: { oggi: ['15:30', '17:00'], domani: ['09:00', '11:00', '14:30', '16:00'], settimana: ['09:00', '11:00', '14:30', '15:30', '16:00', '17:00'] },
-  t2: { oggi: ['16:00'], domani: ['10:00', '14:00'], settimana: ['10:00', '14:00', '16:00', '17:30'] },
-  t3: { oggi: [], domani: ['11:30'], settimana: ['11:30', '15:00', '16:30'] },
-};
+import { api } from '../services/api';
+import { store } from '../services/store';
+import type { Clinic, Treatment } from '../types/database';
 
 export function ClinicDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('Tutti');
-  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('oggi');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'oggi' | 'domani' | 'settimana'>('oggi');
+  const [clinic, setClinic] = useState<Clinic | null>(null);
+  const [treatments, setTreatments] = useState<Treatment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const categories = ['Tutti', ...new Set(MOCK_CLINIC.treatments.map(t => t.category))];
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const clinicData = id ? await api.clinics.getById(id) : undefined;
+        if (clinicData) {
+          setClinic(clinicData);
+        } else {
+          const fallback = id ? store.clinics.getById(id) : undefined;
+          setClinic(fallback ?? null);
+        }
+        const allTreatments = await api.treatments.list();
+        setTreatments(allTreatments);
+      } catch {
+        if (id) {
+          const fallback = store.clinics.getById(id);
+          setClinic(fallback ?? null);
+        }
+        setTreatments(store.treatments.getAll());
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [id]);
+
+  const categories = ['Tutti', ...new Set(treatments.map(t => t.category))];
   const filteredTreatments = selectedCategory === 'Tutti'
-    ? MOCK_CLINIC.treatments
-    : MOCK_CLINIC.treatments.filter(t => t.category === selectedCategory);
+    ? treatments
+    : treatments.filter(t => t.category === selectedCategory);
 
   const watchingCount = useMemo(() => Math.floor(Math.random() * 6) + 2, []);
+
+  if (loading) {
+    return <div className="min-h-screen bg-ivory flex items-center justify-center">
+      <div className="text-silver text-sm uppercase tracking-widest">Caricamento...</div>
+    </div>;
+  }
+
+  if (!clinic) {
+    return <div className="min-h-screen bg-ivory flex items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-2xl font-display text-graphite mb-4">Clinica non trovata</h2>
+        <button onClick={() => navigate('/search')} className="text-sm text-silver hover:text-graphite underline">
+          Torna alla ricerca
+        </button>
+      </div>
+    </div>;
+  }
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -105,10 +93,10 @@ export function ClinicDetail() {
               <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="bg-graphite text-ivory px-3 py-1 flex items-center gap-1 sharp-edge">
                   <Star className="w-4 h-4 fill-ivory text-ivory" />
-                  <span className="text-sm font-medium">{MOCK_CLINIC.rating}</span>
+                  <span className="text-sm font-medium">{clinic.rating}</span>
                 </div>
                 <span className="text-sm text-silver underline decoration-silver/50 underline-offset-4 cursor-pointer hover:text-graphite transition-colors">
-                  {MOCK_CLINIC.reviews} Recensioni Verificate
+                  {clinic.reviews_count} Recensioni Verificate
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1 bg-warm-soft text-warm sharp-edge font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -117,11 +105,11 @@ export function ClinicDetail() {
               </div>
 
               <h1 className="text-4xl md:text-5xl font-display font-light text-graphite mb-4">
-                {MOCK_CLINIC.name}
+                {clinic.name}
               </h1>
 
               <p className="text-graphite-light/70 flex items-center gap-2 mb-8">
-                <MapPin className="w-5 h-5 text-silver" /> {MOCK_CLINIC.location}
+                <MapPin className="w-5 h-5 text-silver" /> {clinic.address}
               </p>
 
               {/* Watching indicator */}
@@ -152,7 +140,7 @@ export function ClinicDetail() {
               </div>
 
               <div className="text-lg text-graphite-light/80 font-light leading-relaxed mb-16">
-                <p>{MOCK_CLINIC.description}</p>
+                <p>{clinic.description}</p>
               </div>
 
               {/* Treatments Section */}
@@ -176,43 +164,27 @@ export function ClinicDetail() {
                 </div>
 
                 <div className="space-y-4">
-                  {filteredTreatments.map((treatment, i) => {
-                    const slots = MOCK_SLOTS[treatment.id]?.[availabilityFilter] ?? [];
-                    return (
+                  {filteredTreatments.map((treatment, i) => (
                     <ScrollReveal key={treatment.id} delay={i * 0.1}>
                       <div className="border border-silver/20 p-6 sharp-edge bg-white hover:border-graphite/30 transition-colors group card-premium">
                         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h3 className="text-xl font-display font-medium group-hover:text-silver transition-colors">{treatment.name}</h3>
-                              {slots.length > 0 && slots.length <= 3 && (
-                                <span className="text-[10px] font-medium uppercase tracking-widest bg-warm/10 text-warm px-2 py-0.5 sharp-edge pulse-soft">
-                                  Solo {slots.length} slot
-                                </span>
-                              )}
                             </div>
                             <p className="text-sm text-graphite-light/70 mb-3 font-light leading-relaxed">{treatment.description}</p>
-                            {slots.length > 0 ? (
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {slots.map(slot => (
-                                  <span key={slot} className="text-xs bg-ivory-dark px-2 py-1 sharp-edge text-graphite-light font-medium">{slot}</span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-silver mb-3 italic">Nessuno slot disponibile per il periodo selezionato</p>
-                            )}
                             <div className="flex items-center gap-4 text-xs font-medium uppercase tracking-widest text-silver">
-                              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {treatment.duration}</span>
+                              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {treatment.duration_min} min</span>
                               <span className="flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Valutazione Medica Inclusa</span>
                             </div>
                           </div>
                           <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-4 shrink-0">
                             <div className="text-right">
-                              <div className="text-2xl font-display font-light text-graphite">{treatment.price}</div>
-                              <div className="text-xs text-silver mt-1">Deposito: {treatment.deposit}</div>
+                              <div className="text-2xl font-display font-light text-graphite">€{treatment.price_from} - €{treatment.price_to}</div>
+                              <div className="text-xs text-silver mt-1">Deposito: €50</div>
                             </div>
                             <button
-                              onClick={() => navigate(`/book/${MOCK_CLINIC.id}/${treatment.id}`)}
+                              onClick={() => navigate(`/book/${clinic.id}/${treatment.id}`)}
                               className="bg-ivory-dark text-graphite px-6 py-3 text-sm font-medium uppercase tracking-widest hover:bg-graphite hover:text-ivory transition-colors sharp-edge flex items-center gap-2"
                             >
                               Seleziona <ArrowRight className="w-4 h-4" />
@@ -221,29 +193,14 @@ export function ClinicDetail() {
                         </div>
                       </div>
                     </ScrollReveal>
-                  );
-                  })}
+                  ))}
                 </div>
               </div>
 
-              {/* Practitioners */}
+              {/* Team Medico */}
               <div>
                 <h2 className="text-2xl font-display font-light text-graphite mb-8">Team Medico</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  {MOCK_CLINIC.practitioners.map(doc => (
-                    <div key={doc.id} className="flex items-center gap-4">
-                      <img
-                        src={doc.image}
-                        alt={doc.name}
-                        className="w-16 h-16 object-cover sharp-edge bg-silver-light"
-                      />
-                      <div>
-                        <h4 className="font-display font-medium text-graphite">{doc.name}</h4>
-                        <p className="text-sm text-silver">{doc.role}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm text-graphite-light/70">Informazioni sul team medico disponibili a breve.</p>
               </div>
             </motion.div>
           </div>
@@ -256,7 +213,7 @@ export function ClinicDetail() {
               <div className="space-y-6 text-sm">
                 <div>
                   <h4 className="font-medium uppercase tracking-widest text-silver mb-2 text-xs">Indirizzo</h4>
-                  <p className="text-graphite-light">{MOCK_CLINIC.location}</p>
+                  <p className="text-graphite-light">{clinic.address}</p>
                 </div>
 
                 <div>

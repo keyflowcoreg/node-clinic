@@ -13,6 +13,7 @@ export function About() {
             src={IMAGES.heroes.about}
             alt="Architectural background"
             className="w-full h-full object-cover opacity-30 saturate-75"
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-ivory/80 to-ivory z-10" />
         </div>

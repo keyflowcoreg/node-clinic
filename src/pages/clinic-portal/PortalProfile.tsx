@@ -334,6 +334,7 @@ export function PortalProfile() {
                 src={imageUrl}
                 alt="Anteprima clinica"
                 className="w-full h-48 object-cover"
+                loading="lazy"
                 onError={e => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}

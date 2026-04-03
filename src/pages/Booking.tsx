@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar, Clock, User, CreditCard, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { store } from '../services/store';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import type { Clinic, Treatment } from '../types/database';
 
 const STEPS = [
   { id: 'slot', label: 'Data & Ora', icon: Calendar },
@@ -30,6 +33,47 @@ export function Booking() {
   const [otp, setOtp] = useState('');
   const [showRecovery, setShowRecovery] = useState(false);
 
+  const { user } = useAuth();
+  const [clinic, setClinic] = useState<Clinic | null>(null);
+  const [treatment, setTreatment] = useState<Treatment | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Fetch real clinic and treatment data
+  useEffect(() => {
+    async function fetchBookingData() {
+      setLoadingData(true);
+      try {
+        if (clinicId) {
+          const c = await api.clinics.getById(clinicId);
+          if (c) setClinic(c);
+        }
+        if (treatmentId) {
+          const t = await api.treatments.getById(treatmentId);
+          if (t) setTreatment(t);
+        }
+      } catch {
+        if (clinicId) {
+          const c = store.clinics.getById(clinicId);
+          if (c) setClinic(c);
+        }
+        if (treatmentId) {
+          const t = store.treatments.getById(treatmentId);
+          if (t) setTreatment(t);
+        }
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    fetchBookingData();
+  }, [clinicId, treatmentId]);
+
+  // Computed pricing
+  const totalPrice = treatment?.price_from ?? 350;
+  const depositAmount = Math.min(50, totalPrice);
+  const remainingBalance = totalPrice - depositAmount;
+  const treatmentName = treatment?.name ?? 'Trattamento';
+  const clinicName = clinic?.name ?? 'Clinica';
+
   // Booking recovery
   useEffect(() => {
     const saved = localStorage.getItem('nc_booking_progress');
@@ -37,7 +81,7 @@ export function Booking() {
       try {
         const data = JSON.parse(saved) as { clinicId: string; treatmentId: string; step: number; date?: string; time?: string; savedAt: number };
         const elapsed = Date.now() - data.savedAt;
-        if (elapsed > 5 * 60 * 1000 && data.clinicId === clinicId && data.treatmentId === treatmentId) {
+        if (elapsed < 30 * 60 * 1000 && data.clinicId === clinicId && data.treatmentId === treatmentId) {
           setShowRecovery(true);
           if (data.date) setSelectedDate(data.date);
           if (data.time) setSelectedTime(data.time);
@@ -159,7 +203,7 @@ export function Booking() {
                   <div className="space-y-4 text-sm">
                     <div className="flex justify-between border-b border-silver/20 pb-4">
                       <span className="text-graphite-light">Trattamento</span>
-                      <span className="font-medium text-right">Tossina Botulinica<br/><span className="text-xs text-silver font-normal">Aesthetic Milano</span></span>
+                      <span className="font-medium text-right">{treatmentName}<br/><span className="text-xs text-silver font-normal">{clinicName}</span></span>
                     </div>
                     <div className="flex justify-between border-b border-silver/20 pb-4">
                       <span className="text-graphite-light">Data & Ora</span>
@@ -170,11 +214,11 @@ export function Booking() {
                     </div>
                     <div className="flex justify-between pt-2">
                       <span className="text-graphite-light">Prezzo Totale</span>
-                      <span className="font-medium">€350</span>
+                      <span className="font-medium">€{totalPrice}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-graphite-light">Deposito Richiesto Ora</span>
-                      <span className="font-medium text-lg">€50</span>
+                      <span className="font-medium text-lg">€{depositAmount}</span>
                     </div>
                   </div>
 
@@ -318,7 +362,7 @@ export function Booking() {
                   <h3 className="font-display text-xl mb-1">Importo Deposito</h3>
                   <p className="text-sm text-graphite-light/70">Addebitato ora per confermare lo slot.</p>
                 </div>
-                <div className="text-3xl font-display font-light">€50</div>
+                <div className="text-3xl font-display font-light">€{depositAmount}</div>
               </div>
 
               <div className="space-y-6">
@@ -331,7 +375,7 @@ export function Booking() {
                 </div>
 
                 <p className="text-xs text-silver leading-relaxed">
-                  Confermando la prenotazione, accetti i nostri Termini di Servizio. Il deposito è rimborsabile fino a 48 ore prima dell'appuntamento. Il saldo rimanente di €300 sarà pagato direttamente in clinica.
+                  Confermando la prenotazione, accetti i nostri Termini di Servizio. Il deposito è rimborsabile fino a 48 ore prima dell'appuntamento. Il saldo rimanente di €{remainingBalance} sarà pagato direttamente in clinica.
                 </p>
 
                 <div className="flex gap-4 pt-6">
@@ -345,7 +389,7 @@ export function Booking() {
                     onClick={handlePayment}
                     className="flex-1 bg-graphite text-ivory py-4 text-sm font-medium uppercase tracking-widest hover:bg-graphite-light transition-colors sharp-edge flex items-center justify-center gap-2"
                   >
-                    Paga €50 <ArrowRight className="w-4 h-4" />
+                    Paga €{depositAmount} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -368,7 +412,7 @@ export function Booking() {
 
             <h2 className="text-4xl font-display font-light text-graphite mb-4">Prenotazione Confermata</h2>
             <p className="text-lg text-graphite-light/70 mb-12 font-light">
-              Il tuo appuntamento presso Aesthetic Milano è confermato. Abbiamo inviato i dettagli a {formData.email}.
+              Il tuo appuntamento presso {clinicName} è confermato. Abbiamo inviato i dettagli a {formData.email}.
             </p>
 
             <div className="bg-white border border-silver/20 p-8 sharp-edge text-left mb-12">
@@ -384,11 +428,11 @@ export function Booking() {
                 </div>
                 <div>
                   <span className="block text-xs font-medium uppercase tracking-widest text-silver mb-1">Trattamento</span>
-                  <span className="font-medium">Tossina Botulinica</span>
+                  <span className="font-medium">{treatmentName}</span>
                 </div>
                 <div>
                   <span className="block text-xs font-medium uppercase tracking-widest text-silver mb-1">Saldo Rimanente</span>
-                  <span className="font-medium">€300 (in clinica)</span>
+                  <span className="font-medium">€{remainingBalance} (in clinica)</span>
                 </div>
               </div>
             </div>
@@ -407,17 +451,17 @@ export function Booking() {
   // Save booking to store on payment step
   const handlePayment = () => {
     store.bookings.create({
-      user_id: 'usr_001',
+      user_id: user?.id || 'guest',
       user_name: `${formData.firstName} ${formData.lastName}`,
       clinic_id: clinicId || 'c1',
-      clinic_name: 'Aesthetic Milano',
+      clinic_name: clinicName,
       treatment_id: treatmentId || 't1',
-      treatment_name: 'Tossina Botulinica',
+      treatment_name: treatmentName,
       date: selectedDate || '',
       time: selectedTime || '',
       status: 'confirmed',
-      deposit_amount: 50,
-      total_amount: 350,
+      deposit_amount: depositAmount,
+      total_amount: totalPrice,
     });
     localStorage.removeItem('nc_booking_progress');
     handleNext();
